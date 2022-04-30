@@ -112,16 +112,16 @@ async def res_send(bot: Bot, event: Event):
     # 插入数据
     if mess[0].type == 'text' and mess[0].data['text'] == "kw":
       if len(mess) != 3:
-        await res.send("请输入kw + 键 + 对应值(键、值内不应包含空格)")
+        await res.send(Message(f"[CQ:at,qq={event.get_user_id()}]请输入kw + 键 + 对应值(键、值内不应包含空格)"))
       type1 = mess[1].type
       keyword = mess[1].data[return_data_type(type1)]
       type2 = mess[2].type
       response = mess[2].data[return_data_type(type2)]
       if search(mydb=mydb,mycursor=mycursor,keyword=keyword) == 0:
         if insert(mydb=mydb,mycursor=mycursor,type1=type1,keyword=keyword,type2=type2,response=response) == 1:
-          await res.send("我记住了")
+          await res.send(Message(f"[CQ:at,qq={event.get_user_id()}]我记住了"))
       else:
-        await res.send("无权修改")
+        await res.send(Message(f"[CQ:at,qq={event.get_user_id()}]无权修改"))
 
     elif len(mess) == 1:
       keyword = mess[0].data[return_data_type(mess[0].type)]
