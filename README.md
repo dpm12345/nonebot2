@@ -26,9 +26,42 @@
 
 在这里，为了能够丰富指定的消息，这里支持自定义回复消息，通过聊天窗口需要发送的语句为`kw 指定消息 回复消息`
 
-(目前仅支持纯文字和表情的内容存储，其中`指定消息`和`回复消息`都只能是同一种类型，即不能同时包含文字和表情,日后会尝试解决这一限制)
+数据库的设置
+```
+数据库名：robot
+编码方式:utfmb4
+表名: return_message
+字段名及属性:   id          mediumint 11
+               keyword     longtext         utf8mb4
+               response    longtext         utf6mb4
+```
+请在自己的服务器上建立以上数据库内容，若自定义，请在以下部分进行修改
+```
+mydb = mysql.connector.connect(
+    host="yoursever",       # 数据库主机地址
+    user="yourname",     # 数据库用户名
+    passwd="yourpassword",   # 数据库密码
+    database="name"          # 数据库名
+  )
+# 查询数据操作
+sql = "SELECT 回复消息对应字段 FROM 你的表名 where 指定消息对应字段='%s'"%(keyword)
 
-(同时，目前仅支持设置内容，不支持修改内容和删除内容，日后会找时间完善)
+# 插入数据操作
+sql = "INSERT INTO 你的表名 (指定消息对应字段,回复消息对应字段) VALUES (%s, %s)"
+
+# 删除数据操作
+sql = "DELETE FROM 你的表名 WHERE 指定消息对应字段='%s'"%keyword
+
+# 更新
+sql = f"UPDATE 你的表名 SET 回复消息对应字段='{new_response}' where 指定消息对应字段='{keyword}'"
+
+```
+对于可进行修改的用户，请在代码最前面修改permission中的内容，填入允许的qq号
+如下，则允许用户qq=1223，2212进行更新和删除工作
+```
+permisson = ("1223","2212") 
+```
+
 
 ## 今日人品运数生成
 
@@ -38,12 +71,18 @@
 ## 随机发图功能
 
 这里分为美图和涩图两大类(ACG)，一部分来源于自己的存货，一部分来源于api。
+在使用时请改变图片路径
+```
+dir = your_path
+```
 这里感谢[MirlKoi](https://iw233.cn/)api的提供
 
 使用该命令时需@机器人，并以'/'作为命令起始
 命令如下
 1. 美图:"random_pic1"/"随机美图"/"来张美图"/"美图"
-2. 涩图:"random_pic2"/"随机涩图"/"来张涩图"/"涩图"
+2. 涩图:"random_pic2"/"随机涩图"/"来张涩图"/"涩图"/"随机色图"/"来张色图"/"色图"
+
+
 
 机器人将会自动发送图片
 

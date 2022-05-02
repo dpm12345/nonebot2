@@ -1,47 +1,3 @@
-# from nonebot import on_message, logger
-# from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent
-# from . import config
-# import re
-
-# repeater_group = config.repeater_group
-# shortest = config.shortest_length
-
-# m = on_message(priority=10, block=False)
-
-# last_message = {}
-# message_times = {}
-
-
-# # 消息预处理
-# def messagePreprocess(message: str):
-#     raw_message = message
-#     contained_images = {}
-#     images = re.findall(r'\[CQ:image.*?]', message)
-#     for i in images:
-#         contained_images.update({i: [re.findall(r'\[.*url=(.*?),.*]', i)[0], re.findall(r'\[.*file=(.*?),.*]', i)[0]]})
-#     for i in contained_images:
-#         message = message.replace(i, f'[{contained_images[i][1]}]')
-#     return message, raw_message
-
-
-# @m.handle()
-# async def repeater(bot: Bot, event: GroupMessageEvent):
-#     gid = str(event.group_id)
-#     if gid in repeater_group:
-#         global last_message, message_times
-#         message, raw_message = messagePreprocess(str(event.message))
-#         logger.debug(f'这一次消息: {message}')
-#         logger.debug(f'上一次消息: {last_message.get(gid)}')
-#         if last_message.get(gid) != message:
-#             message_times[gid] = 1
-#         else:
-#             message_times[gid] += 1
-#         logger.debug(f'已重复次数: {message_times.get(gid)}')
-#         if message_times.get(gid) >= config.shortest_times:
-#             logger.debug(f'原始的消息: {str(event.message)}')
-#             logger.debug(f"欲发送信息: {raw_message}")
-#             await bot.send_group_msg(group_id=event.group_id, message=raw_message, auto_escape=False)
-#         last_message[gid] = message
 
 from multiprocessing import Event
 import mysql.connector
@@ -50,19 +6,17 @@ from nonebot.adapters.onebot.v11.message import Message
 from nonebot.adapters.onebot.v11 import Bot,Event
 import re
 
-# 检查数据类型
-def return_data_type(message_type):
-  if message_type == 'text':
-    return 'text'
-  elif message_type == 'face':
-    return 'id'
 
-# 对传入数据进行操作,转为CQ码
+# 允许的用户
+permisson = ("xxxx","xxxx") # 填入qq号
+
+
+# 对传入数据进行操作,分为一个列表
 def spearate(str):
   res = re.split(" ",str)
   for i in range(res.count('')):
     res.remove('')
-  return Message(res)
+  return res
 
 # 查询数据操作
 def search(mydb,mycursor,keyword):
@@ -75,9 +29,9 @@ def search(mydb,mycursor,keyword):
     return 0
 
 # 插入数据操作
-def insert(mydb,mycursor,type1,keyword,type2,response):
-  sql = "INSERT INTO return_response (type1,keyword,type2,response) VALUES (%s, %s, %s, %s)"
-  val = (type1,keyword,type2,response)
+def insert(mydb,mycursor,keyword,response):
+  sql = "INSERT INTO return_response (keyword,response) VALUES (%s, %s)"
+  val = (keyword,response)
   if search(mydb,mycursor=mycursor,keyword=keyword) == 1 :
     return 0
   else:
@@ -87,12 +41,26 @@ def insert(mydb,mycursor,type1,keyword,type2,response):
 
 # 删除数据操作
 def delete(mydb,mycursor,keyword):
-  sql = "DELETE FROM return_response WHERE keyword='%s'"%keyword
+  if search(mydb=mydb,mycursor=mycursor,keyword=keyword) == 1:
+    sql = "DELETE FROM return_response WHERE keyword='%s'"%keyword
  
-  mycursor.execute(sql)
+    mycursor.execute(sql)
  
-  mydb.commit()
-  return 1
+    mydb.commit()
+    return 1
+  else:
+    return 0
+
+# 更新
+def upgrade(mydb,mycursor,keyword,new_response):
+  if search(mydb=mydb,mycursor=mycursor,keyword=keyword) == 1:
+    sql = f"UPDATE return_response SET response='{new_response}' where keyword='{keyword}'"
+  
+    mycursor.execute(sql)
+    mydb.commit()
+    return 1
+  else:
+    return 0
 
 res = on_message(priority=10,block=False)
 
@@ -101,45 +69,72 @@ async def res_send(bot: Bot, event: Event):
     ans = ""
     mydb = mysql.connector.connect(
     host="localhost",       # 数据库主机地址
-    user="root",     # 数据库用户名
-    passwd="root",   # 数据库密码
-    database="robot"
+    user="yourname",     # 数据库用户名
+    passwd="yourpassword",   # 数据库密码
+    database="name"          # 数据库名
   )
  
     mycursor = mydb.cursor()
     mess = spearate(str(event.get_message()))
-    
-    # 插入数据
-    if mess[0].type == 'text' and mess[0].data['text'] == "kw":
-      if len(mess) != 3:
-        await res.send(Message(f"[CQ:at,qq={event.get_user_id()}]请输入kw + 键 + 对应值(键、值内不应包含空格)"))
-      type1 = mess[1].type
-      keyword = mess[1].data[return_data_type(type1)]
-      type2 = mess[2].type
-      response = mess[2].data[return_data_type(type2)]
-      if search(mydb=mydb,mycursor=mycursor,keyword=keyword) == 0:
-        if insert(mydb=mydb,mycursor=mycursor,type1=type1,keyword=keyword,type2=type2,response=response) == 1:
-          await res.send(Message(f"[CQ:at,qq={event.get_user_id()}]我记住了"))
-      else:
-        await res.send(Message(f"[CQ:at,qq={event.get_user_id()}]无权修改"))
+    user_id = event.get_user_id()   # 获取消息发送者id
+  
 
+    # kw 设置情况
+    if mess[0] == "kw":
+      # 未满足格式
+      if len(mess) != 3:
+        await res.send(Message(f"[CQ:at,qq={user_id}]请输入kw + 键 + 对应值(键、值内不应包含空格)"))
+      keyword = mess[1]
+      response = mess[2]
+      # 数据不存在并成功插入
+      if insert(mydb=mydb,mycursor=mycursor,keyword=keyword,response=response) == 1:
+          await res.send(Message(f"[CQ:at,qq={user_id}]我记住了[CQ:face,id=287]"))
+      # 数据已存在
+      else:
+        await res.send(Message(f"[CQ:at,qq={user_id}]数据已存在，请使用upgrade进行数据更新"))
+
+    # 更新操作
+    elif mess[0] == "upgrade":
+      # 判断格式
+      if len(mess) != 3:
+        await res.send(Message(f"[CQ:at,qq={user_id}]请输入upgrade + 键 + 新对应值(键、值内不应包含空格)"))
+      keyword = mess[1]
+      new_response = mess[2]
+      # 判断是否有权限
+      if user_id in permisson:
+        # 存在且成功更新
+        if upgrade(mydb=mydb,mycursor=mycursor,keyword=keyword,new_response=new_response) == 1:
+          await res.send(Message(f"[CQ:at,qq={user_id}]更新完成[CQ:face,id=287]"))
+        else:
+          await res.send(Message(f"[CQ:at,qq={user_id}]数据不存在"))
+      else:
+        await res.send(Message(f"[CQ:at,qq={user_id}]无权限更新"))
+    # 删除操作
+    elif mess[0] == "del":
+      if len(mess) == 2:
+        keyword = mess[1]
+        # 判断是否有权限
+        if user_id in permisson:
+          if delete(mydb=mydb,mycursor=mycursor,keyword=keyword) == 1:
+            await res.send(Message(f"[CQ:at,qq={user_id}]删除成功[CQ:face,id=287]"))
+          else:
+            await res.send(Message(f"[CQ:at,qq={user_id}]该值不存在"))
+        else:
+          await res.send(Message(f"[CQ:at,qq={user_id}]无权限删除"))
+      else:
+        await res.send(Message(f"[CQ:at,qq={user_id}]请输入\'del+你要删除的关键字\'"))
+    # 消息判断
     elif len(mess) == 1:
-      keyword = mess[0].data[return_data_type(mess[0].type)]
-      if search(mydb=mydb,mycursor=mycursor,keyword=keyword) == 1:
-        sql = f"SELECT type2,response FROM return_response where keyword='{keyword}'"
+      keyword = mess[0]
+      # 对于‘这就是’开头的消息，一律复读
+      if re.match("^这就是", keyword):
+        await res.send(Message(keyword))
+      elif search(mydb=mydb,mycursor=mycursor,keyword=keyword) == 1:
+        sql = f"SELECT response FROM return_response where keyword='{keyword}'"
         mycursor.execute(sql)
         myresult = mycursor.fetchall()
-        ans_type = myresult[0][0]
-        ans_data_type = return_data_type(ans_type)
-        ans_data_data = myresult[0][1]
-        if ans_type == "text":
-          ans = ans_data_data
-        else:
-          ans = f"[CQ:{ans_type},{ans_data_type}={ans_data_data}]"
-        
+        ans = myresult[0]
         await res.send(Message(ans))
-      elif re.match("^这就是", keyword):
-        await res.send(Message(keyword))
       
 
 
