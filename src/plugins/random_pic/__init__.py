@@ -21,8 +21,8 @@ def get_one_image_from_local(dir):
 
 
 @random_pic1.handle()
-async def _(bot: Bot,event: Event):
-    dir = "file_path" 
+async def pic1(bot: Bot,event: Event):
+    dir = "C:/好图" 
     img_dir = get_one_image_from_local(dir)
     api = "https://iw233.cn/api.php?sort=iw233"
     choose = randint(0,1)
@@ -31,8 +31,8 @@ async def _(bot: Bot,event: Event):
     else:
         await random_pic1.send(Message(f'[CQ:at,qq={event.get_user_id()}][CQ:image,file=file:///{img_dir}]'))
 @random_pic2.handle()
-async def _(bot: Bot,event: Event):
-    dir = "file_path" 
+async def pic2(bot: Bot,event: Event):
+    dir = "C:/涩图" 
     img_dir = get_one_image_from_local(dir)
     api = "http://iw233.fgimax2.fgnwctvip.com/API/Ghs.php"
     choose = randint(0,1)
@@ -40,3 +40,5 @@ async def _(bot: Bot,event: Event):
         await random_pic2.send(Message(f'[CQ:at,qq={event.get_user_id()}][CQ:image,file={api},cache=0]'))
     else:
         await random_pic2.send(Message(f'[CQ:at,qq={event.get_user_id()}][CQ:image,file=file:///{img_dir}]'))
+
+

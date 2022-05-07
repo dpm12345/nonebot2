@@ -7,8 +7,8 @@ from nonebot.adapters.onebot.v11 import Bot,Event
 import re
 
 
-# 允许的用户
-permisson = ("xxxx","xxxx") # 填入qq号
+# 权限设置
+permisson = ("qq号","qq号")
 
 
 # 对传入数据进行操作,分为一个列表
@@ -64,45 +64,39 @@ def upgrade(mydb,mycursor,keyword,new_response):
 
 res = on_message(priority=10,block=False)
 
+
 @res.handle()
 async def res_send(bot: Bot, event: Event):
     ans = ""
     mydb = mysql.connector.connect(
     host="localhost",       # 数据库主机地址
-    user="yourname",     # 数据库用户名
-    passwd="yourpassword",   # 数据库密码
-    database="name"          # 数据库名
+    user="root",     # 数据库用户名
+    passwd="root12",   # 数据库密码
+    database="robot"
   )
  
     mycursor = mydb.cursor()
     mess = spearate(str(event.get_message()))
-    user_id = event.get_user_id()   # 获取消息发送者id
-  
-
-    # kw 设置情况
+    user_id = event.get_user_id()
+    
+    # 插入数据
+    if len(mess)==0:
+      await res.finish(Message("到"))
     if mess[0] == "kw":
-      # 未满足格式
       if len(mess) != 3:
         await res.send(Message(f"[CQ:at,qq={user_id}]请输入kw + 键 + 对应值(键、值内不应包含空格)"))
       keyword = mess[1]
       response = mess[2]
-      # 数据不存在并成功插入
       if insert(mydb=mydb,mycursor=mycursor,keyword=keyword,response=response) == 1:
           await res.send(Message(f"[CQ:at,qq={user_id}]我记住了[CQ:face,id=287]"))
-      # 数据已存在
       else:
         await res.send(Message(f"[CQ:at,qq={user_id}]数据已存在，请使用upgrade进行数据更新"))
-
-    # 更新操作
     elif mess[0] == "upgrade":
-      # 判断格式
       if len(mess) != 3:
         await res.send(Message(f"[CQ:at,qq={user_id}]请输入upgrade + 键 + 新对应值(键、值内不应包含空格)"))
       keyword = mess[1]
       new_response = mess[2]
-      # 判断是否有权限
       if user_id in permisson:
-        # 存在且成功更新
         if upgrade(mydb=mydb,mycursor=mycursor,keyword=keyword,new_response=new_response) == 1:
           await res.send(Message(f"[CQ:at,qq={user_id}]更新完成[CQ:face,id=287]"))
         else:
@@ -113,7 +107,6 @@ async def res_send(bot: Bot, event: Event):
     elif mess[0] == "del":
       if len(mess) == 2:
         keyword = mess[1]
-        # 判断是否有权限
         if user_id in permisson:
           if delete(mydb=mydb,mycursor=mycursor,keyword=keyword) == 1:
             await res.send(Message(f"[CQ:at,qq={user_id}]删除成功[CQ:face,id=287]"))
@@ -123,10 +116,8 @@ async def res_send(bot: Bot, event: Event):
           await res.send(Message(f"[CQ:at,qq={user_id}]无权限删除"))
       else:
         await res.send(Message(f"[CQ:at,qq={user_id}]请输入\'del+你要删除的关键字\'"))
-    # 消息判断
     elif len(mess) == 1:
       keyword = mess[0]
-      # 对于‘这就是’开头的消息，一律复读
       if re.match("^这就是", keyword):
         await res.send(Message(keyword))
       elif search(mydb=mydb,mycursor=mycursor,keyword=keyword) == 1:
